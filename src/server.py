@@ -163,6 +163,12 @@ class WEP_Server():
         """
         if params is not None and "Limit" in params and params["Limit"] != -1:
             limit = params["Limit"]
+            if not isinstance(limit,int):
+                return self.error_response(
+                    error_code="INVALID FIELD", 
+                    message=f"Limit must be an int, not {type(limit)}"
+                )
+
         else:
             # Otherwise use the default of all locations
             limit = len(self.locations)
@@ -297,7 +303,7 @@ class WEP_Server():
         self.clean_auth()
 
         # For maximum compatibility we allow some leeway for mixing up location names and location codes, as "Location" was not clearly defined in the spec
-        if "Location" not in params and  "LocationCode" not in params and "LocationName" not in params:
+        if params is None or ("Location" not in params and "LocationCode" not in params and "LocationName" not in params):
             return self.error_response(
                 error_code="MISSING PARAMETER",
                 message="No location was provided, or the parameter name was incorrect"
@@ -352,7 +358,7 @@ class WEP_Server():
         self.clean_auth() # to ensure authcode is fine
         
         # For maximum compatibility we allow some leeway for mixing up location names and location codes, as "Location" was not clearly defined in the spec
-        if "Location" not in params and  "LocationCode" not in params and "LocationName" not in params:
+        if params is None or ("Location" not in params and "LocationCode" not in params and "LocationName" not in params):
             return self.error_response(
                 error_code="MISSING PARAMETER",
                 message="No location was provided, or the parameter name was incorrect"
@@ -366,13 +372,30 @@ class WEP_Server():
                     error_code="UNKNOWN LOCATION",
                     message=str(e)
                 )
+        
+        # Check that the date parameter is provided as expected
+        if "Date" not in params:
+            return self.error_response(
+                error_code="MISSING PARAMETER",
+                message="No date was provided, or the parameter name was incorrect"
+            )
+        else:
+            forec_date = params["Date"]
 
+        # Set up the conditions requested by the user
         conditions = {}
         for c in CONDITION_TYPES:
             if c in params:
                 conditions[c]=params[c]
-        forec_date = params["Date"]
+        
+        for cond in conditions:
+            if cond not in CONDITION_TYPES:
+                return self.error_response(
+                    error_code="INVALID FIELD",
+                    message=f"{cond} is not a valid condition"    
+                )
 
+        # Check the auth code
         if authcode is None:
             return self.error_response(
                 error_code="NEED AUTH",
@@ -384,13 +407,6 @@ class WEP_Server():
                 message="The provided authorization code is not valid"
             )
         
-        for cond in conditions:
-            if cond not in CONDITION_TYPES:
-                return self.error_response(
-                    error_code="INVALID FIELD",
-                    message=f"{cond} is not a valid condition"    
-                )
-        
         if forec_date not in self.forecasts[location_code]:
             return self.error_response(
                 error_code="INVALID FIELD",
@@ -400,22 +416,30 @@ class WEP_Server():
 
         old_conds = {}
         new_conds = {}
-        for cond_name,cond_val in conditions.items():
-            old_conds[cond_name] = current_forecast[cond_name]
+        for cond_name,new_cond_val in conditions.items():
+            old_conds[cond_name] = old_cond_val = current_forecast[cond_name]
             #In order to account for issues where server and client might disagree on whether something is a float or an int
-            new_conds[cond_name] = type(current_forecast[cond_name])(cond_val)
+
+            try:
+                new_conds[cond_name] = type(old_cond_val)(new_cond_val)
+            except:
+                return self.error_response(
+                    error_code="INVALID FIELD",
+                    message=f"There is a irreconcilable type mismatch.  The existing {cond_name} is of type {type(old_cond_val)}, but the newly provided value is of {type(new_cond_val)}"
+                )
         
         current_forecast.update(new_conds)
     
         return messages.format_message(
             message_type = "Edit Forecast Data Response",
-            Location = self.locations[location_code],
+            Location = location_code,
             NestedData = {"Old": old_conds, "New": new_conds}
         )
 
     def add_location(self, authcode: str|None, params: dict[Any]) -> str:
         """Updates the locations dict with a new location."""
         self.clean_auth() # to ensure authcode is fine
+
         if authcode is None:
             return self.error_response(
                 error_code="NEED AUTH",
@@ -440,6 +464,13 @@ class WEP_Server():
         else: 
             loc_code = params["LocationCode"]
             loc_name = params["LocationName"]
+        
+        if loc_code in self.locations:
+
+            return self.error_response(
+                error_code="PREEXISTING LOCATION",
+                message=f"The location code {loc_code} already exists and thus cannot be added"
+            )
         
         self.locations[loc_code] = loc_name
         self.forecasts[loc_code] = {}
