@@ -413,7 +413,7 @@ class WEP_Server():
             except (TypeError,ValueError):
                 return self.error_response(
                     error_code="INVALID FIELD",
-                    message=f"There is an irreconcilable type mismatch.  The existing {cond_name} is of type {type(old_cond_val).__name__}, but the newly provided value is of {type(new_cond_val)}"
+                    message=f"There is an irreconcilable type mismatch.  The existing {cond_name} is of type {type(old_cond_val).__name__}, but the newly provided value is of {type(new_cond_val).__name__}"
                 )
         
         current_forecast.update(new_conds)
@@ -467,6 +467,12 @@ class WEP_Server():
                 message=f"The location code {loc_code} already exists and thus cannot be added"
             )
         
+        if not isinstance(loc_code,str):
+            return self.error_response(
+                error_code="INVALID FIELD",
+                message=f"The location code {loc_code} should be a string, not a {type(loc_code).__name__}"
+            )
+
         self.locations[loc_code] = loc_name
         self.forecasts[loc_code] = {}
     
