@@ -371,6 +371,12 @@ class WEP_Server():
             if c in params:
                 conditions[c]=params[c]
         
+        # Check if conditions is empty
+        if not conditions:
+            return self.error_response(
+                error_code="MISSING PARAMETER",
+                message=f"No conditions to update were provided"    
+            )
         for cond in conditions:
             if cond not in CONDITION_TYPES:
                 return self.error_response(
