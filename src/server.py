@@ -16,7 +16,7 @@ import string
 import random
 from datetime import datetime as dt, timedelta as tdelt, date
 
-from typing import Tuple, Any
+from typing import Any
 from itertools import islice
 
 import messages # Custom file for shared functionality
@@ -141,7 +141,7 @@ class WEP_Server():
             if not isinstance(limit,int):
                 return self.error_response(
                     error_code="INVALID FIELD", 
-                    message=f"Limit must be an int, not {type(limit)}"
+                    message=f"Limit must be an int, not {type(limit).__name__}"
                 )
 
         else:
@@ -200,7 +200,7 @@ class WEP_Server():
         if not isinstance(additional_days,int):
             return self.error_response(
                 error_code="INVALID FIELD",
-                message=f"AdditionalDays should be of type int, not type {type(additional_days)}"
+                message=f"AdditionalDays should be of type int, not type {type(additional_days).__name__}"
             )
         
         if additional_days > 14 or additional_days < 0:
@@ -375,7 +375,7 @@ class WEP_Server():
         if not conditions:
             return self.error_response(
                 error_code="MISSING PARAMETER",
-                message=f"No conditions to update were provided"    
+                message="No conditions to update were provided"    
             )
         for cond in conditions:
             if cond not in CONDITION_TYPES:
