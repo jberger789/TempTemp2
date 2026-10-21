@@ -459,20 +459,24 @@ class WEP_Server():
         else: 
             loc_code = params["LocationCode"]
             loc_name = params["LocationName"]
-        
+
+        if not isinstance(loc_code,str):
+            return self.error_response(
+                error_code="INVALID FIELD",
+                message=f"The location code {loc_code} should be a string, not a {type(loc_code).__name__}"
+            )
+        elif not isinstance(loc_name,str):
+            return self.error_response(
+                error_code="INVALID FIELD",
+                message=f"The location name {loc_name} should be a string, not a {type(loc_name).__name__}"
+            )
+
         # Check that the location code does not already exist
         if loc_code in self.locations:
             return self.error_response(
                 error_code="PREEXISTING LOCATION",
                 message=f"The location code {loc_code} already exists and thus cannot be added"
             )
-        
-        if not isinstance(loc_code,str):
-            return self.error_response(
-                error_code="INVALID FIELD",
-                message=f"The location code {loc_code} should be a string, not a {type(loc_code).__name__}"
-            )
-
         self.locations[loc_code] = loc_name
         self.forecasts[loc_code] = {}
     
