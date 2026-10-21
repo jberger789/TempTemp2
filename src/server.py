@@ -117,31 +117,6 @@ class WEP_Server():
         print(f"  <- {len(data)} bytes from {addr[0]}:{addr[1]}: {data!r}", flush=True)
         return data.encode()
 
-    #TODO:
-    def error_check(self, message: str) -> Tuple[bool, dict]:
-        """Checks for general errors in a provided message.
-        If there's an error with it, responds with that error.
-
-        Returns a tuple. 
-        Value 1 is a boolean - True if an error was found, False if not
-        Value 2 is a dict with 1 kvp contained (error code and message)
-        """
-        # Note: considering a lot of these are "message specific", I think
-        # it may make sense to leave those for within the messages. Also
-        # was a little silly to define the order we did for them. -Jordan
-
-        # unknown location
-        # invalid format
-        # missing params
-        # preexisting location
-        # need auth
-        # invalid unit
-        # invalid days
-        # invalid field
-        # misc error
-
-        return (False, None)
-
     def get_status(self) -> str:
         """Provide the server's status.
         Curren local date and time,
@@ -157,7 +132,7 @@ class WEP_Server():
             Uptime = (dt.now() - self.start_time).total_seconds()
         )
 
-    def get_locations(self, params: Any|None) -> str:
+    def get_locations(self, params: dict[Any]|None) -> str:
         """Provide the location dictionary.
         Convert it into a string matching format specification.
         """
@@ -202,8 +177,7 @@ class WEP_Server():
                 raise(ValueError(f"{loc} is not a valid location"))
 
 
-    def get_forecasts(self, params) -> str:
-
+    def get_forecasts(self, params: dict[Any]) -> str:
         """Provide the forecast for a specific location up to a # of days."""
 
         # For maximum compatibility we allow some leeway for mixing up location names and location codes, as "Location" was not clearly defined in the spec
@@ -223,6 +197,11 @@ class WEP_Server():
                 )
 
         additional_days = params.get("AdditionalDays", 0)
+        if not isinstance(additional_days,int):
+            return self.error_response(
+                error_code="INVALID FIELD",
+                message=f"AdditionalDays should be of type int, not type {type(additional_days)}"
+            )
         
         if additional_days > 14 or additional_days < 0:
             return self.error_response(
@@ -260,7 +239,7 @@ class WEP_Server():
             NestedData = response_fcs
         )
 
-    def grant_auth(self, params, duration: int = 60) -> str:
+    def grant_auth(self, params: dict[Any], duration: int = 60) -> str:
         """Check if the password matches one of an authorized user,
         then generate & store a temporary authorization code.
         Provide that & the expiry time to the user.
@@ -296,7 +275,7 @@ class WEP_Server():
             ExpiryTime = int(expireTime.timestamp())
         )
 
-    def append_forecast(self, authcode: str, params: dict) -> str:
+    def append_forecast(self, authcode: str|None, params: dict[Any]) -> str:
         """If user is authenticated, appends the day's conditions to the next open date
         for a location.
         """
@@ -322,19 +301,23 @@ class WEP_Server():
         for c in CONDITION_TYPES:
             if c in params:
                 conditions[c]=params[c]
-        
         if not set(CONDITION_TYPES).issubset(conditions):
             return self.error_response(
                 error_code="MISSING PARAMETER",
                 message="Conditions were not fully defined"
             )
-        if authcode not in self.authcodes:
-            return self.error_response("NEED AUTH")
-        if len(conditions) < len(CONDITION_TYPES):
-            return self.error_response("MISSING PARAMETER")
-        for cond in conditions:
-            if cond not in CONDITION_TYPES:
-                return self.error_response("INVALID FIELD")
+        
+        # Check the auth code
+        if authcode is None:
+            return self.error_response(
+                error_code="NEED AUTH",
+                message="No authorization code was provided"
+            )
+        elif authcode not in self.authcodes:
+            return self.error_response(
+                error_code="NEED AUTH",
+                message="The provided authorization code is not valid"
+            )
         
         # find next unset day
         loc_forecasts = self.forecasts[location_code]
@@ -419,13 +402,12 @@ class WEP_Server():
         for cond_name,new_cond_val in conditions.items():
             old_conds[cond_name] = old_cond_val = current_forecast[cond_name]
             #In order to account for issues where server and client might disagree on whether something is a float or an int
-
             try:
                 new_conds[cond_name] = type(old_cond_val)(new_cond_val)
-            except:
+            except (TypeError,ValueError):
                 return self.error_response(
                     error_code="INVALID FIELD",
-                    message=f"There is a irreconcilable type mismatch.  The existing {cond_name} is of type {type(old_cond_val)}, but the newly provided value is of {type(new_cond_val)}"
+                    message=f"There is an irreconcilable type mismatch.  The existing {cond_name} is of type {type(old_cond_val).__name__}, but the newly provided value is of {type(new_cond_val)}"
                 )
         
         current_forecast.update(new_conds)
@@ -440,6 +422,7 @@ class WEP_Server():
         """Updates the locations dict with a new location."""
         self.clean_auth() # to ensure authcode is fine
 
+        # Validate the auth code
         if authcode is None:
             return self.error_response(
                 error_code="NEED AUTH",
@@ -451,7 +434,13 @@ class WEP_Server():
                 message="The provided authorization code is not valid"
             )
         
-        if "LocationCode" not in params:
+        # validate the location parameters
+        if params is None:
+            return self.error_response(
+                error_code="MISSING PARAMETER",
+                message="No parameters were provided. Required parameters are LocationCode and LocationName"    
+            )
+        elif "LocationCode" not in params:
             return self.error_response(
                 error_code="MISSING PARAMETER",
                 message="No location code was provided"    
@@ -465,8 +454,8 @@ class WEP_Server():
             loc_code = params["LocationCode"]
             loc_name = params["LocationName"]
         
+        # Check that the location code does not already exist
         if loc_code in self.locations:
-
             return self.error_response(
                 error_code="PREEXISTING LOCATION",
                 message=f"The location code {loc_code} already exists and thus cannot be added"
@@ -524,7 +513,7 @@ class WEP_Server():
         wdict["Temp"] = round(max(-10, min(105 ,random.normalvariate(65, 15))), 1)
         wdict["UV"] = round(random.uniform(1,11), 1)
         wdict["WDir"] = random.choice(CONDITIONS["WDir"])
-        wdict["WSpeed"] = random.uniform(0, 50)
+        wdict["WSpeed"] = round(random.uniform(0, 50),5)
         
         return wdict
 

@@ -80,6 +80,8 @@ def unformat_message(formatted_str: str) -> tuple[str, str|None, dict|None]:
 TYPE_CASTS = {'I': int, 'F': float, 'S': str, 'D': date.fromisoformat, 'T': time.fromisoformat}
 
 def unpack_param_str(param_str: str) -> dict:
+    outer = inner = None # To prevent old values from causing issues in certain malformed inputs
+
     params = {}
     plist = param_str.split(";")
     for p in plist:
@@ -114,6 +116,4 @@ def unpack_param_str(param_str: str) -> dict:
             if "/" not in name or "NestedData" not in params or outer not in params["NestedData"] or inner not in params["NestedData"][outer]:
                 raise ValueError(f"Parameter '{name}' has invalid parameter type code '{ptype}'")
         
-        outer = inner = None # To prevent old values from causing issues in certain malformed inputs
-
     return params

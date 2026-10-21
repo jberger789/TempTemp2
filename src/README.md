@@ -48,9 +48,9 @@ Message Parameters: {'LocationDictionary': {'BOS': 'Boston', 'NYC': 'New York'}}
 We can get the forecast data now that we have locations.
 ```
 > Forecast Request || Location_S_BOS;ConditionNames_LS_(Temp,,Desc,,PChance); AdditionalDays_I_2
-Raw Response: Locations Response||Location_S_BOS;0/Desc_S_Storms;0/PChance_I_41;0/Temp_F_60.3;1/Desc_S_Sunny;1/PChance_I_49;1/Temp_F_63.2;2/Desc_S_Cloudy;2/PChance_I_40;2/Temp_F_57.1
-Message Type: Locations Response
-Message Parameters: {'Location': 'BOS', 'NestedData': {'0': {'Desc': 'Storms', 'PChance': 41, 'Temp': 60.3}, '1': {'Desc': 'Sunny', 'PChance': 49, 'Temp': 63.2}, '2': {'Desc': 'Cloudy', 'PChance': 40, 'Temp': 57.1}}}
+Raw Response: Forecast Response||Location_S_BOS;0/Desc_S_Sunny;0/PChance_F_99.0;0/Temp_F_58.0;1/Desc_S_Sunny;1/PChance_F_78.03;1/Temp_F_53.6;2/Desc_S_Cloudy;2/PChance_F_20.61;2/Temp_F_60.9
+Message Type: Forecast Response
+Message Parameters: {'Location': 'BOS', 'NestedData': {'0': {'Desc': 'Sunny', 'PChance': 99.0, 'Temp': 58.0}, '1': {'Desc': 'Sunny', 'PChance': 78.03, 'Temp': 53.6}, '2': {'Desc': 'Cloudy', 'PChance': 20.61, 'Temp': 60.9}}}
 ```
 Telling us on day 0 (today) it'll be stormy, with a 41% rain chance and temperature of
 60.3 degrees F.
@@ -59,9 +59,9 @@ We predefine 3 passwords to try: `password123`,`XKCD`, and `123!/x`.
 Using an incorrect password to try and get an auth code:  
 ```
 > Auth Request||     Password_S_ABCD
-Raw Response: Error Message||ErrorCode_S_NEED AUTH;Message_S_The provided password was not valid
+Raw Response: Error Message||ErrorCode_S_NEED AUTH;Message_S_Incorrect password
 Message Type: Error Message
-Message Parameters: {'ErrorCode': 'NEED AUTH', 'Message': 'Incorrect Password'}
+Message Parameters: {'ErrorCode': 'NEED AUTH', 'Message': 'Incorrect password'}
 ```
 Using a correct password:
 ```
@@ -74,16 +74,16 @@ We can then use that auth code (will not be the same for a user) to edit forecas
 information.
 ```
 > Edit Forecast Data Request|89Np32|Location_S_BOS; Date_D_2026-10-20;Temp_F_58;Desc_S_Sunny;PChance_I_99
-Raw Response: Edit Forecast Data Response||Location_S_Boston;Old/Desc_S_Storms;Old/PChance_I_41;Old/Temp_F_60.3;New/Desc_S_Sunny;New/PChance_I_99;New/Temp_F_58.0
+Raw Response: Edit Forecast Data Response||Location_S_Boston;Old/Desc_S_Storms;Old/PChance_F_41.0;Old/Temp_F_60.3;New/Desc_S_Sunny;New/PChance_F_99.0;New/Temp_F_58.0
 Message Type: Edit Forecast Data Response
-Message Parameters: {'Location': 'Boston', 'NestedData': {'Old': {'Desc': 'Storms', 'PChance': 41, 'Temp': 60.3}, 'New': {'Desc': 'Sunny', 'PChance': 99.0, 'Temp': 58.0}}}
+Message Parameters: {'Location': 'BOS', 'NestedData': {'Old': {'Desc': 'Storms', 'PChance': 41.0, 'Temp': 60.3}, 'New': {'Desc': 'Sunny', 'PChance': 99.0, 'Temp': 58.0}}}
 ```
 Calling Forecast Request to confirm the changes shows they were successful:
 ```
 > Forecast Request || Location_S_BOS;ConditionNames_LS_(Temp,,Desc,,PChance); AdditionalDays_I_2
-Raw Response: Locations Response||Location_S_BOS;0/Desc_S_Sunny;0/PChance_I_99;0/Temp_F_58.0;1/Desc_S_Sunny;1/PChance_I_49;1/Temp_F_63.2;2/Desc_S_Cloudy;2/PChance_I_40;2/Temp_F_57.1
-Message Type: Locations Response
-Message Parameters: {'Location': 'BOS', 'NestedData': {'0': {'Desc': 'Sunny', 'PChance': 99, 'Temp': 58.0}, '1': {'Desc': 'Sunny', 'PChance': 49, 'Temp': 63.2}, '2': {'Desc': 'Cloudy', 'PChance': 40.0, 'Temp': 57.1}}}
+Raw Response: Forecast Response||Location_S_BOS;0/Desc_S_Sunny;0/PChance_F_99.0;0/Temp_F_58.0;1/Desc_S_Sunny;1/PChance_F_49.0;1/Temp_F_63.2;2/Desc_S_Cloudy;2/PChance_F_40.0;2/Temp_F_57.1
+Message Type: Forecast Response
+Message Parameters: {'Location': 'BOS', 'NestedData': {'0': {'Desc': 'Sunny', 'PChance': 99.0, 'Temp': 58.0}, '1': {'Desc': 'Sunny', 'PChance': 49.0, 'Temp': 63.2}, '2': {'Desc': 'Cloudy', 'PChance': 40.0, 'Temp': 57.1}}}
 ```
 etc. etc.
 ## Known limitations
